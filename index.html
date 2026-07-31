@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Heliograph — Optical File Transfer</title>
+    <meta
+      name="description"
+      content="Move a file between two devices with a screen and a camera — the payload travels as light."
+    />
+    <meta name="theme-color" content="#0c0a06" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <style>
+      /* Redesign v3 (CLI) — single source of styling; the upstream
+         shared/style.css is no longer linked. Fonts are self-hosted via
+         @fontsource (imported in main.ts): a CDN font at runtime would be a
+         failed build (BUILD_LOOP invariant 7). */
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important; /* author display rules must not defeat the hidden attribute */
+      }
+      :root {
+        --bg: #0c0a06;
+        --panel: #12100a;
+        --line: #2e2718;
+        --line-dark: #241e13;
+        --line-faint: #171308;
+        --line-dash: #3a3122;
+        --fg: #ede5d4;
+        --mut: #9a8f76;
+        --dim: #6e6450;
+        --amber: #ffb257;
+        --amber-hi: #ffc57e;
+        --green: #7dc98f;
+        --nav-h: 64px;
+      }
+      @keyframes blink {
+        0%, 49% { opacity: 1; }
+        50%, 100% { opacity: 0; }
+      }
+      @keyframes scan {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(300%); }
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        background: var(--bg);
+        color: var(--fg);
+        font: 14px/1.7 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        display: flex;
+        flex-direction: column;
+        -webkit-tap-highlight-color: transparent;
+      }
+      button, select, a.primary {
+        touch-action: manipulation; /* no 300ms double-tap-zoom wait on phones */
+      }
+      a { color: var(--amber); }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 18px 8px;
+        font-size: 12px;
+        color: var(--dim);
+      }
+      header .dot { color: var(--green); }
+      section[data-panel] { display: none; flex: 1; flex-direction: column; }
+      body[data-tab="send"] section[data-panel="send"],
+      body[data-tab="recv"] section[data-panel="recv"],
+      body[data-tab="conf"] section[data-panel="conf"] { display: flex; }
+      /* view switching inside panels */
+      #send-idle, #send-live, #rx-idle, #rx-live, #rx-done { display: none; }
+      #panel-send[data-view="idle"] #send-idle { display: flex; }
+      #panel-send[data-view="live"] #send-live { display: flex; }
+      #panel-recv[data-view="idle"] #rx-idle { display: flex; }
+      #panel-recv[data-view="live"] #rx-live { display: flex; }
+      #panel-recv[data-view="done"] #rx-done { display: flex; }
+
+      .term {
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        gap: 18px;
+        padding: 24px 24px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px);
+        max-width: 560px;
+        width: 100%;
+        margin: 0 auto;
+      }
+      .prompt { font-size: 13px; color: var(--mut); }
+      .prompt .ps1 { color: var(--green); }
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 15px;
+        background: var(--amber);
+        vertical-align: text-bottom;
+        animation: blink 1.1s step-end infinite;
+      }
+      .comment { font-size: 12px; color: var(--dim); }
+      .comment .hash { color: var(--line-dash); }
+      .comment.err { color: var(--amber); }
+      .linebtn {
+        font: inherit;
+        font-size: 12px;
+        text-align: left;
+        color: var(--mut);
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        min-height: 44px;
+      }
+      .linebtn:hover { color: var(--fg); }
+      .linebtn .dim { color: var(--dim); }
+      .linebtn.tiny { font-size: 11px; min-height: 0; padding: 2px 0 0; color: var(--dim); }
+
+      /* — send — */
+      .dropbox {
+        font: inherit;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        color: var(--fg);
+        background: var(--panel);
+        border: 1px dashed var(--line-dash);
+        border-radius: 6px;
+        padding: 44px 24px;
+        cursor: pointer;
+        text-align: center;
+      }
+      .dropbox:hover, body.dragging .dropbox { border-color: var(--amber); }
+      .dropbox .bracket { color: var(--amber); font-size: 13px; }
+      .dropbox .sub { font-size: 12px; color: var(--dim); }
+      body.dragging { outline: 3px dashed var(--amber); outline-offset: -10px; }
+      body.dragging * { pointer-events: none; }
+
+      #send-live {
+        flex: 1;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        position: relative;
+        padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+      }
+      .scanbar {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: #eee;
+        overflow: hidden;
+      }
+      .scanbar > div { width: 33%; height: 100%; background: var(--amber); animation: scan 1.6s linear infinite; }
+      .stage canvas { display: block; image-rendering: pixelated; max-width: 100%; }
+      .chipwrap {
+        position: absolute;
+        left: 0; right: 0;
+        bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);
+        display: flex;
+        justify-content: center;
+        padding: 0 16px;
+        z-index: 5;
+      }
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 10px 14px;
+        font-size: 12px;
+        box-shadow: 0 8px 30px #00000055;
+        max-width: 92vw;
+      }
+      .chip .desc { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .chip .desc .dim { color: var(--dim); }
+      .chip button, #rx-release {
+        font: inherit;
+        font-size: 12px;
+        color: var(--amber);
+        background: none;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 6px 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        min-height: 44px; /* thumb target — the comp's 36px is under Apple's floor */
+      }
+      .chip button:hover, #rx-release:hover { border-color: var(--amber); }
+
+      /* — receive — */
+      .bigbtn {
+        font: inherit;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        color: #121009;
+        background: var(--amber);
+        border: 0;
+        border-radius: 6px;
+        padding: 32px 24px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .bigbtn:hover { background: var(--amber-hi); }
+      .bigbtn .big { font-size: 15px; }
+      .bigbtn .sub { font-size: 12px; font-weight: 400; opacity: 0.75; }
+      .qrcard { background: #fff; border-radius: 6px; padding: 12px; align-self: center; }
+      .qrcard canvas { display: block; }
+      #pair-out { display: flex; flex-direction: column; gap: 10px; }
+      .mono { font-size: 10px; color: var(--dim); word-break: break-all; }
+      #pair-fp { color: var(--amber); }
+
+      #rx-live { flex: 1; position: relative; background: #000; flex-direction: column; }
+      #rx-live video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .progress {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: #1b1712;
+        z-index: 4;
+      }
+      .progress > div { height: 100%; width: 0; background: var(--amber); transition: width 0.25s; }
+      .statcard {
+        position: absolute;
+        top: 14px; left: 14px; right: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 12px;
+        background: #0c0a06cc;
+        border: 1px solid var(--line-dark);
+        border-radius: 6px;
+        padding: 10px 12px;
+        max-width: 340px;
+        z-index: 4;
+      }
+      .statcard .dim { color: var(--dim); }
+      #m-rate { color: var(--amber); font-weight: 700; }
+      #rx-release {
+        background: #0c0a06e6;
+        border-radius: 6px;
+        padding: 10px 18px;
+        min-height: 44px;
+      }
+      #rx-live .chipwrap { z-index: 5; }
+
+      .okline { font-size: 14px; color: var(--green); font-weight: 700; }
+      .okline.bad { color: var(--amber); }
+      .filecard {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 14px 16px;
+      }
+      .filecard .fico { color: var(--amber); font-size: 20px; }
+      .filecard .fmeta { display: flex; flex-direction: column; min-width: 0; }
+      .filecard .fname { font-size: 14px; font-weight: 700; word-break: break-all; }
+      .filecard .fsub { font-size: 12px; color: var(--dim); }
+      .btnrow { display: flex; gap: 10px; flex-wrap: wrap; }
+      .primary {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        color: #121009;
+        background: var(--amber);
+        border: 0;
+        border-radius: 6px;
+        padding: 12px 24px;
+        cursor: pointer;
+        min-height: 44px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+      }
+      .primary:hover { background: var(--amber-hi); color: #121009; }
+      .ghost {
+        font: inherit;
+        font-size: 13px;
+        color: var(--mut);
+        background: none;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 12px 24px;
+        cursor: pointer;
+        min-height: 44px;
+        white-space: nowrap;
+      }
+      .ghost:hover { border-color: var(--amber); }
+      #result { display: flex; flex-direction: column; gap: 12px; }
+      #result img.received { max-width: 100%; border-radius: 6px; }
+      #result pre.textview {
+        max-height: 320px;
+        overflow: auto;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 12px;
+        margin: 0;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      /* — conf — */
+      #panel-conf {
+        width: 100%;
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 24px 20px calc(var(--nav-h) + env(safe-area-inset-bottom) + 32px);
+        gap: 22px;
+        overflow-y: auto;
+      }
+      .confgroup { display: flex; flex-direction: column; gap: 2px; }
+      .confgroup .gname { font-size: 12px; color: var(--amber); padding-bottom: 6px; }
+      .confgroup .gfoot { font-size: 11px; color: var(--dim); padding-top: 6px; }
+      .confrow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 48px;
+        border-bottom: 1px solid var(--line-faint);
+      }
+      .confrow .rl { display: flex; flex-direction: column; }
+      .confrow .rname { font-size: 13px; color: var(--fg); }
+      .confrow .rnote { font-size: 11px; color: var(--dim); }
+      .confrow select {
+        font: inherit;
+        font-size: 13px;
+        color: var(--amber);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 7px 10px;
+        min-width: 92px;
+      }
+      .sealrow { display: flex; gap: 8px; flex-wrap: wrap; }
+      .boxbtn {
+        font: inherit;
+        font-size: 12px;
+        color: var(--fg);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 10px 16px;
+        cursor: pointer;
+        min-height: 44px;
+      }
+      .boxbtn:hover:not(:disabled) { border-color: var(--amber); }
+      .boxbtn:disabled { opacity: 0.4; cursor: default; }
+      #pair-cap { display: none; flex-direction: column; gap: 10px; padding-top: 10px; }
+      #pair-cap.on { display: flex; }
+      #pair-cap video { width: min(84vw, 320px); border-radius: 6px; background: #000; }
+      #pair-cap input {
+        font: inherit;
+        font-size: 12px;
+        color: var(--fg);
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 8px 10px;
+        min-width: 0;
+        flex: 1;
+      }
+      #pair-cap .row { display: flex; gap: 8px; align-items: center; }
+
+      /* — bottom nav — */
+      nav {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        display: flex;
+        align-items: stretch;
+        background: var(--panel);
+        border-top: 1px solid var(--line-dark);
+        padding: 0 6px calc(6px + env(safe-area-inset-bottom));
+        font-size: 12px;
+        z-index: 10;
+      }
+      nav button {
+        font: inherit;
+        font-size: 12px;
+        background: none;
+        border: 0;
+        padding: 12px 14px;
+        cursor: pointer;
+        min-height: 44px;
+        color: var(--dim);
+      }
+      body[data-tab="send"] #tab-send,
+      body[data-tab="recv"] #tab-recv,
+      body[data-tab="conf"] #tab-conf {
+        color: #121009;
+        background: var(--amber);
+        font-weight: 700;
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-BbZncl3p.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-iIJ8NeeL.css">
+  </head>
+  <body data-tab="send">
+    <header><span class="dot">●</span><span>heliograph</span></header>
+
+    <section data-panel="send" id="panel-send" data-view="idle">
+      <div class="term" id="send-idle">
+        <div class="prompt"><span class="ps1">$</span> tx --file <span class="cursor"></span></div>
+        <button id="pick" class="dropbox">
+          <span class="bracket">[ choose a file ]</span>
+          <span class="sub">or drop it anywhere — stream starts instantly</span>
+        </button>
+        <input id="file-input" type="file" hidden />
+        <div class="comment err" id="send-error" hidden></div>
+      </div>
+      <div id="send-live">
+        <div class="scanbar"><div></div></div>
+        <div class="stage" id="stage"><canvas id="qr" width="16" height="16"></canvas></div>
+        <div class="chipwrap">
+          <div class="chip">
+            <span class="desc" id="tx-desc">tx</span>
+            <button id="tx-stop">^C stop</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-panel="recv" id="panel-recv" data-view="idle">
+      <div class="term" id="rx-idle">
+        <div class="prompt"><span class="ps1">$</span> rx --camera <span class="cursor"></span></div>
+        <button id="start" class="bigbtn">
+          <span class="big">[ start camera ]</span>
+          <span class="sub">point at the sender's code — locks on mid-stream</span>
+        </button>
+        <div class="comment"><span class="hash">#</span> steady beats close — prop the phone against something</div>
+        <div class="comment err" id="rx-error" hidden></div>
+        <button id="show-pair" class="linebtn">
+          <span class="dim">--identity</span> <span id="pair-toggle-label">show this device's pairing code</span>
+        </button>
+        <div id="pair-out" hidden>
+          <div class="qrcard"><canvas id="pair-qr" width="16" height="16"></canvas></div>
+          <div class="comment">fingerprint=<strong id="pair-fp">—</strong> <span class="hash"># say it out loud when pairing</span></div>
+          <div class="mono" id="pair-code"></div>
+        </div>
+      </div>
+      <div id="rx-live">
+        <video id="video" muted playsinline></video>
+        <div class="progress" id="progress"><div id="bar"></div></div>
+        <div class="statcard">
+          <div class="dim" id="m-cam">cam=—</div>
+          <div id="m-frames">searching for a stream…</div>
+          <div><span id="m-rate"></span> <span class="dim" id="m-time"></span></div>
+          <div class="dim" id="m-detail" hidden></div>
+          <button id="detail-toggle" class="linebtn tiny">+ more</button>
+        </div>
+        <div class="chipwrap"><button id="rx-release">^Z release camera</button></div>
+      </div>
+      <div class="term" id="rx-done">
+        <div class="okline" id="rx-done-head">✓ transfer complete</div>
+        <div class="filecard">
+          <span class="fico">▤</span>
+          <div class="fmeta">
+            <span class="fname" id="done-name"></span>
+            <span class="fsub" id="done-meta"></span>
+          </div>
+        </div>
+        <div class="btnrow">
+          <a class="primary" id="save-link" hidden>[ save file ]</a>
+          <button class="ghost" id="rx-again">receive another</button>
+        </div>
+        <div id="result"></div>
+      </div>
+    </section>
+
+    <section data-panel="conf" id="panel-conf">
+      <div class="prompt" style="font-size: 12px"><span class="ps1">$</span> cat transfer.conf</div>
+      <div class="confgroup">
+        <div class="gname">[transmit]</div>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--tx-fps</span><span class="rnote"># each frame owns >=2 refresh cycles</span></span>
+          <select id="cfg-fps">
+            <option>10</option><option>15</option><option>20</option>
+            <option selected>24</option><option>30</option><option>60</option>
+          </select>
+        </label>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--bytes-per-frame</span><span class="rnote"># 1465 = QR v27; denser is faster</span></span>
+          <select id="cfg-bytes">
+            <option>500</option><option>1000</option><option selected>1465</option>
+            <option>1850</option><option>2331</option><option>2953</option>
+          </select>
+        </label>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--ecc</span><span class="rnote"># L — the fountain absorbs erasure</span></span>
+          <select id="cfg-ecc">
+            <option selected>L</option><option>M</option><option>Q</option><option>H</option>
+          </select>
+        </label>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--display-size</span><span class="rnote"># px on the sending screen</span></span>
+          <select id="cfg-size">
+            <option>300</option><option>450</option><option>600</option><option>750</option>
+            <option selected>900</option><option>1050</option><option>1200</option>
+          </select>
+        </label>
+        <div class="gfoot"># changes restart the stream; the receiver resets itself off the new session id</div>
+      </div>
+      <div class="confgroup">
+        <div class="gname">[capture]</div>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--capture-width</span><span class="rnote"># wider sees more, decodes slower</span></span>
+          <select id="cfg-width">
+            <option>960</option><option selected>1280</option><option>1920</option>
+          </select>
+        </label>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--capture-fps</span><span class="rnote"># demanded exact — ideal:60 delivers 30</span></span>
+          <select id="cfg-capfps"><option>30</option><option selected>60</option></select>
+        </label>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--workers</span><span class="rnote"># busy workers drop frames; that's fine</span></span>
+          <select id="cfg-workers"><option>1</option><option selected>2</option><option>3</option></select>
+        </label>
+        <div class="gfoot"># applied when the camera starts; 1280 is iOS's widest true-60fps mode</div>
+      </div>
+      <div class="confgroup">
+        <div class="gname">[sealing]</div>
+        <div class="gfoot" style="padding: 0 0 8px"># sealed transfers are noise to every camera except the paired device</div>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--seal</span><span class="rnote"># who can open what this device sends</span></span>
+          <select id="cfg-seal">
+            <option value="" selected>off</option>
+          </select>
+        </label>
+        <div class="sealrow">
+          <button class="boxbtn" id="pair-btn">[ pair a device ]</button>
+          <button class="boxbtn" id="unpair-btn" disabled>[ unpair ]</button>
+        </div>
+        <div id="pair-cap">
+          <video id="pair-video" muted playsinline></video>
+          <div class="comment" id="pair-status">point this camera at the pairing code on the receiving device</div>
+          <div class="row">
+            <input id="pair-manual" type="text" placeholder="…or paste the pairing code" />
+            <button class="boxbtn" id="pair-manual-add">Add</button>
+            <button class="boxbtn" id="pair-cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <nav>
+      <button id="tab-send">1:send</button>
+      <button id="tab-recv">2:recv</button>
+      <button id="tab-conf">3:conf</button>
+    </nav>
+
+  </body>
+</html>

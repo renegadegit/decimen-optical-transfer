@@ -1,0 +1,28 @@
+{
+  "name": "Heliograph",
+  "short_name": "Heliograph",
+  "description": "Optical file transfer: move a file between two devices with a screen and a camera — the payload travels as light.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0c0a06",
+  "theme_color": "#0c0a06",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
