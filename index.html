@@ -76,6 +76,7 @@
         color: var(--dim);
       }
       header .dot { color: var(--green); }
+      header .logo { display: block; height: 22px; width: auto; }
       section[data-panel] { display: none; flex: 1; flex-direction: column; }
       body[data-tab="send"] section[data-panel="send"],
       body[data-tab="recv"] section[data-panel="recv"],
@@ -434,7 +435,10 @@
     <link rel="stylesheet" crossorigin href="./assets/index-iIJ8NeeL.css">
   </head>
   <body data-tab="send">
-    <header><span class="dot">●</span><span>heliograph</span></header>
+    <header>
+      <img src="./logo-dark.png" alt="" width="37" height="22" class="logo" />
+      <span>heliograph</span>
+    </header>
 
     <section data-panel="send" id="panel-send" data-view="idle">
       <div class="term" id="send-idle">

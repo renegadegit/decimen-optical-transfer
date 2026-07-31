@@ -7,7 +7,7 @@
 // `vite build`; this file is served verbatim from /sw.js so its URL is
 // stable across deploys while the hashed assets inside the list change.
 
-const VERSION = "409f41030d94";
+const VERSION = "e8a4d582bd59";
 const CACHE = `decimen-${VERSION}`;
 const PRECACHE = [
   "./",
@@ -23,6 +23,7 @@ const PRECACHE = [
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png",
+  "./logo-dark.png",
   "./manifest.webmanifest"
 ];
 
