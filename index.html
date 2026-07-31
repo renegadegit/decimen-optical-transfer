@@ -430,7 +430,7 @@
         font-weight: 700;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-BlcvUTvK.js"></script>
+    <script type="module" crossorigin src="./assets/index-CYZsZG5d.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-iIJ8NeeL.css">
   </head>
   <body data-tab="send">
@@ -497,6 +497,7 @@
             <span class="fsub" id="done-meta"></span>
           </div>
         </div>
+        <div class="comment" id="done-sender" hidden></div>
         <div class="btnrow">
           <a class="primary" id="save-link" hidden>[ save file ]</a>
           <button class="ghost" id="rx-again">receive another</button>
@@ -536,6 +537,28 @@
             <option selected>900</option><option>1050</option><option>1200</option>
           </select>
         </label>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--grid</span><span class="rnote"># codes per frame — needs resolution; 1x1 handheld</span></span>
+          <select id="cfg-grid">
+            <option value="1" selected>1x1</option>
+            <option value="2">2x2</option>
+            <option value="3">3x3</option>
+          </select>
+        </label>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--color</span><span class="rnote"># 3 planes per code — experimental; ecc M+, propped</span></span>
+          <select id="cfg-color">
+            <option value="mono" selected>mono</option>
+            <option value="rgb">rgb</option>
+          </select>
+        </label>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--sign</span><span class="rnote"># sign transfers so the receiver can pin this sender</span></span>
+          <select id="cfg-sign">
+            <option value="on" selected>on</option>
+            <option value="off">off</option>
+          </select>
+        </label>
         <div class="gfoot"># changes restart the stream; the receiver resets itself off the new session id</div>
       </div>
       <div class="confgroup">
@@ -554,7 +577,22 @@
           <span class="rl"><span class="rname">--workers</span><span class="rnote"># busy workers drop frames; that's fine</span></span>
           <select id="cfg-workers"><option>1</option><option selected>2</option><option>3</option></select>
         </label>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--color-capture</span><span class="rnote"># decode R/G/B planes — 3x decode cost</span></span>
+          <select id="cfg-color-capture"><option value="off" selected>off</option><option value="on">on</option></select>
+        </label>
         <div class="gfoot"># applied when the camera starts; 1280 is iOS's widest true-60fps mode</div>
+      </div>
+      <div class="confgroup">
+        <div class="gname">[journal]</div>
+        <div class="gfoot" style="padding: 0 0 8px">
+          # append-only local record of every transfer — who this device sent
+          to or received, when, and the sha256. no delete by design.
+        </div>
+        <div class="sealrow">
+          <button class="boxbtn" id="journal-export">[ export journal ]</button>
+          <span class="comment" id="journal-count" style="align-self: center"># 0 entries</span>
+        </div>
       </div>
       <div class="confgroup">
         <div class="gname">[sealing]</div>
