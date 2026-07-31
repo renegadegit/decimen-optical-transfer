@@ -38,9 +38,10 @@
         --fg: #ede5d4;
         --mut: #9a8f76;
         --dim: #6e6450;
-        --amber: #ffb257;
-        --amber-hi: #ffc57e;
-        --green: #7dc98f;
+        --accent: #33ff33; /* phosphor green — the terminal's voice */
+        --accent-hi: #85ff85;
+        --warn: #ffb257; /* errors and warnings keep amber: green failure reads as success */
+        --green: #7dc98f; /* soft ok-state green (status dot, done line) */
         --nav-h: 64px;
       }
       @keyframes blink {
@@ -65,7 +66,7 @@
       button, select, a.primary {
         touch-action: manipulation; /* no 300ms double-tap-zoom wait on phones */
       }
-      a { color: var(--amber); }
+      a { color: var(--accent); }
       header {
         display: flex;
         align-items: center;
@@ -103,13 +104,13 @@
         display: inline-block;
         width: 8px;
         height: 15px;
-        background: var(--amber);
+        background: var(--accent);
         vertical-align: text-bottom;
         animation: blink 1.1s step-end infinite;
       }
       .comment { font-size: 12px; color: var(--dim); }
       .comment .hash { color: var(--line-dash); }
-      .comment.err { color: var(--amber); }
+      .comment.err { color: var(--warn); }
       .linebtn {
         font: inherit;
         font-size: 12px;
@@ -140,10 +141,10 @@
         cursor: pointer;
         text-align: center;
       }
-      .dropbox:hover, body.dragging .dropbox { border-color: var(--amber); }
-      .dropbox .bracket { color: var(--amber); font-size: 13px; }
+      .dropbox:hover, body.dragging .dropbox { border-color: var(--accent); }
+      .dropbox .bracket { color: var(--accent); font-size: 13px; }
       .dropbox .sub { font-size: 12px; color: var(--dim); }
-      body.dragging { outline: 3px dashed var(--amber); outline-offset: -10px; }
+      body.dragging { outline: 3px dashed var(--accent); outline-offset: -10px; }
       body.dragging * { pointer-events: none; }
 
       #send-live {
@@ -162,7 +163,7 @@
         background: #eee;
         overflow: hidden;
       }
-      .scanbar > div { width: 33%; height: 100%; background: var(--amber); animation: scan 1.6s linear infinite; }
+      .scanbar > div { width: 33%; height: 100%; background: var(--accent); animation: scan 1.6s linear infinite; }
       .stage canvas { display: block; image-rendering: pixelated; max-width: 100%; }
       .chipwrap {
         position: absolute;
@@ -190,7 +191,7 @@
       .chip button, #rx-release {
         font: inherit;
         font-size: 12px;
-        color: var(--amber);
+        color: var(--accent);
         background: none;
         border: 1px solid var(--line);
         border-radius: 4px;
@@ -199,7 +200,7 @@
         white-space: nowrap;
         min-height: 44px; /* thumb target — the comp's 36px is under Apple's floor */
       }
-      .chip button:hover, #rx-release:hover { border-color: var(--amber); }
+      .chip button:hover, #rx-release:hover { border-color: var(--accent); }
 
       /* — receive — */
       .bigbtn {
@@ -208,22 +209,22 @@
         flex-direction: column;
         align-items: center;
         gap: 10px;
-        color: #121009;
-        background: var(--amber);
-        border: 0;
+        color: var(--accent);
+        background: none;
+        border: 1px solid var(--accent);
         border-radius: 6px;
         padding: 32px 24px;
         cursor: pointer;
         font-weight: 700;
       }
-      .bigbtn:hover { background: var(--amber-hi); }
+      .bigbtn:hover { color: var(--accent-hi); border-color: var(--accent-hi); }
       .bigbtn .big { font-size: 15px; }
-      .bigbtn .sub { font-size: 12px; font-weight: 400; opacity: 0.75; }
+      .bigbtn .sub { font-size: 12px; font-weight: 400; color: var(--dim); }
       .qrcard { background: #fff; border-radius: 6px; padding: 12px; align-self: center; }
       .qrcard canvas { display: block; }
       #pair-out { display: flex; flex-direction: column; gap: 10px; }
       .mono { font-size: 10px; color: var(--dim); word-break: break-all; }
-      #pair-fp { color: var(--amber); }
+      #pair-fp { color: var(--accent); }
 
       #rx-live { flex: 1; position: relative; background: #000; flex-direction: column; }
       #rx-live video {
@@ -243,7 +244,7 @@
       .progress > div {
         height: 100%;
         width: 100%;
-        background: var(--amber);
+        background: var(--accent);
         transform: scaleX(0);
         transform-origin: 0 0;
         transition: transform 0.25s linear; /* compositor-only — no layout work on the decode-critical screen */
@@ -267,7 +268,7 @@
         z-index: 4;
       }
       .statcard .dim { color: var(--dim); }
-      #m-rate { color: var(--amber); font-weight: 700; }
+      #m-rate { color: var(--accent); font-weight: 700; }
       #rx-release {
         background: #0c0a06e6;
         border-radius: 6px;
@@ -277,7 +278,7 @@
       #rx-live .chipwrap { z-index: 5; }
 
       .okline { font-size: 14px; color: var(--green); font-weight: 700; }
-      .okline.bad { color: var(--amber); }
+      .okline.bad { color: var(--warn); }
       .filecard {
         display: flex;
         align-items: center;
@@ -287,7 +288,7 @@
         border-radius: 6px;
         padding: 14px 16px;
       }
-      .filecard .fico { color: var(--amber); font-size: 20px; }
+      .filecard .fico { color: var(--accent); font-size: 20px; }
       .filecard .fmeta { display: flex; flex-direction: column; min-width: 0; }
       .filecard .fname { font-size: 14px; font-weight: 700; word-break: break-all; }
       .filecard .fsub { font-size: 12px; color: var(--dim); }
@@ -297,7 +298,7 @@
         font-size: 13px;
         font-weight: 700;
         color: #121009;
-        background: var(--amber);
+        background: var(--accent);
         border: 0;
         border-radius: 6px;
         padding: 12px 24px;
@@ -307,7 +308,7 @@
         display: inline-flex;
         align-items: center;
       }
-      .primary:hover { background: var(--amber-hi); color: #121009; }
+      .primary:hover { background: var(--accent-hi); color: #121009; }
       .ghost {
         font: inherit;
         font-size: 13px;
@@ -320,7 +321,7 @@
         min-height: 44px;
         white-space: nowrap;
       }
-      .ghost:hover { border-color: var(--amber); }
+      .ghost:hover { border-color: var(--accent); }
       #result { display: flex; flex-direction: column; gap: 12px; }
       #result img.received { max-width: 100%; border-radius: 6px; }
       #result pre.textview {
@@ -346,7 +347,7 @@
         overflow-y: auto;
       }
       .confgroup { display: flex; flex-direction: column; gap: 2px; }
-      .confgroup .gname { font-size: 12px; color: var(--amber); padding-bottom: 6px; }
+      .confgroup .gname { font-size: 12px; color: var(--accent); padding-bottom: 6px; }
       .confgroup .gfoot { font-size: 11px; color: var(--dim); padding-top: 6px; }
       .confrow {
         display: flex;
@@ -362,7 +363,7 @@
       .confrow select {
         font: inherit;
         font-size: 13px;
-        color: var(--amber);
+        color: var(--accent);
         background: var(--panel);
         border: 1px solid var(--line);
         border-radius: 4px;
@@ -381,7 +382,7 @@
         cursor: pointer;
         min-height: 44px;
       }
-      .boxbtn:hover:not(:disabled) { border-color: var(--amber); }
+      .boxbtn:hover:not(:disabled) { border-color: var(--accent); }
       .boxbtn:disabled { opacity: 0.4; cursor: default; }
       #pair-cap { display: none; flex-direction: column; gap: 10px; padding-top: 10px; }
       #pair-cap.on { display: flex; }
@@ -425,7 +426,7 @@
       body[data-tab="recv"] #tab-recv,
       body[data-tab="conf"] #tab-conf {
         color: #121009;
-        background: var(--amber);
+        background: var(--accent);
         font-weight: 700;
       }
     </style>
