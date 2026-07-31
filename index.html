@@ -253,6 +253,23 @@
         height: 100%;
         object-fit: cover;
       }
+      /* Coverage dominates decode success — at 40% of frame nothing decodes
+         at any density — but the viewfinder gave no target. Fill this. */
+      .framing {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        z-index: 3;
+      }
+      .framing > div {
+        width: min(74vw, 74%);
+        aspect-ratio: 1;
+        border: 2px dashed rgba(51, 255, 51, 0.55);
+        border-radius: 8px;
+      }
       .progress {
         position: absolute;
         top: 0; left: 0; right: 0;
@@ -449,7 +466,7 @@
         font-weight: 700;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-B29FF3D8.js"></script>
+    <script type="module" crossorigin src="./assets/index-D9DBkIGn.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-iIJ8NeeL.css">
   </head>
   <body data-tab="send">
@@ -503,6 +520,7 @@
       </div>
       <div id="rx-live">
         <video id="video" muted playsinline></video>
+        <div class="framing" aria-hidden="true"><div></div></div>
         <div class="progress" id="progress"><div id="bar"></div></div>
         <div class="statcard">
           <div class="dim" id="m-cam">cam=—</div>
