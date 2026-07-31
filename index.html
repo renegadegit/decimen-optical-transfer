@@ -164,7 +164,16 @@
         background: #eee;
         overflow: hidden;
       }
-      .scanbar > div { width: 33%; height: 100%; background: var(--accent); animation: scan 1.6s linear infinite; }
+      /* Real emission progress, not a decorative sweep: fills once per pass
+         over K*1.18 frames. Compositor-only, like the receiver's bar. */
+      .scanbar > div {
+        width: 100%;
+        height: 100%;
+        background: var(--accent);
+        transform: scaleX(0);
+        transform-origin: 0 0;
+        transition: transform 0.2s linear;
+      }
       .stage canvas { display: block; image-rendering: pixelated; max-width: 100%; }
       .chipwrap {
         position: absolute;
@@ -187,8 +196,17 @@
         box-shadow: 0 8px 30px #00000055;
         max-width: 92vw;
       }
-      .chip .desc { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .chip .chiptext { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+      .chip .desc { color: var(--fg); white-space: nowrap; } /* never truncates: this is the countdown */
       .chip .desc .dim { color: var(--dim); }
+      .chip .sub {
+        font-size: 11px;
+        color: var(--dim);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .chip .pct { color: var(--accent); }
       .chip button, #rx-release {
         font: inherit;
         font-size: 12px;
@@ -431,13 +449,13 @@
         font-weight: 700;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CYZsZG5d.js"></script>
+    <script type="module" crossorigin src="./assets/index-DuZ_1iSw.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-iIJ8NeeL.css">
   </head>
   <body data-tab="send">
     <header>
       <img src="./logo-dark.png" alt="" width="37" height="22" class="logo" />
-      <span>heliograph</span>
+      <span>Heliograph</span>
     </header>
 
     <section data-panel="send" id="panel-send" data-view="idle">
@@ -451,11 +469,14 @@
         <div class="comment err" id="send-error" hidden></div>
       </div>
       <div id="send-live">
-        <div class="scanbar"><div></div></div>
+        <div class="scanbar"><div id="tx-bar"></div></div>
         <div class="stage" id="stage"><canvas id="qr" width="16" height="16"></canvas></div>
         <div class="chipwrap">
           <div class="chip">
-            <span class="desc" id="tx-desc">tx</span>
+            <div class="chiptext">
+              <span class="desc" id="tx-desc">tx</span>
+              <span class="sub" id="tx-sub"></span>
+            </div>
             <button id="tx-stop">^C stop</button>
           </div>
         </div>
