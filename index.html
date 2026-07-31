@@ -240,7 +240,18 @@
         background: #1b1712;
         z-index: 4;
       }
-      .progress > div { height: 100%; width: 0; background: var(--amber); transition: width 0.25s; }
+      .progress > div {
+        height: 100%;
+        width: 100%;
+        background: var(--amber);
+        transform: scaleX(0);
+        transform-origin: 0 0;
+        transition: transform 0.25s linear; /* compositor-only — no layout work on the decode-critical screen */
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .scanbar > div { animation: none; width: 100%; }
+        .cursor { animation: none; }
+      }
       .statcard {
         position: absolute;
         top: 14px; left: 14px; right: 14px;
@@ -418,7 +429,7 @@
         font-weight: 700;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-BbZncl3p.js"></script>
+    <script type="module" crossorigin src="./assets/index-BlcvUTvK.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-iIJ8NeeL.css">
   </head>
   <body data-tab="send">
