@@ -396,6 +396,17 @@
       .confrow .rl { display: flex; flex-direction: column; }
       .confrow .rname { font-size: 13px; color: var(--fg); }
       .confrow .rnote { font-size: 11px; color: var(--dim); }
+      .confrow input[type="text"] {
+        font: inherit;
+        font-size: 13px;
+        color: var(--accent);
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 7px 10px;
+        min-width: 0;
+        width: 120px;
+      }
       .confrow select {
         font: inherit;
         font-size: 13px;
@@ -466,7 +477,7 @@
         font-weight: 700;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-D9DBkIGn.js"></script>
+    <script type="module" crossorigin src="./assets/index-D9sRFSXb.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-iIJ8NeeL.css">
   </head>
   <body data-tab="send">
@@ -627,15 +638,22 @@
         <div class="gfoot"># applied when the camera starts; 1280 is iOS's widest true-60fps mode</div>
       </div>
       <div class="confgroup">
-        <div class="gname">[journal]</div>
+        <div class="gname">[audit]</div>
         <div class="gfoot" style="padding: 0 0 8px">
-          # append-only local record of every transfer — who this device sent
-          to or received, when, and the sha256. no delete by design.
+          # hash-chained record of every transfer and every pairing change.
+          # altering or removing an entry breaks the chain and shows up in
+          # verify. export regularly — deleting site data still wipes it.
         </div>
+        <label class="confrow">
+          <span class="rl"><span class="rname">--operator</span><span class="rnote"># name recorded on each entry</span></span>
+          <input id="cfg-operator" type="text" placeholder="unset" />
+        </label>
         <div class="sealrow">
-          <button class="boxbtn" id="journal-export">[ export journal ]</button>
-          <span class="comment" id="journal-count" style="align-self: center"># 0 entries</span>
+          <button class="boxbtn" id="audit-export">[ export ]</button>
+          <button class="boxbtn" id="audit-verify">[ verify chain ]</button>
+          <span class="comment" id="audit-count" style="align-self: center"># 0 entries</span>
         </div>
+        <div class="comment" id="audit-result" hidden></div>
       </div>
       <div class="confgroup">
         <div class="gname">[sealing]</div>
